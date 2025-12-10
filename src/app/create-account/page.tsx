@@ -87,10 +87,21 @@ export default function CreateAccountPage() {
               Signers and confirmations
             </h1>
           </div>
-          <p className="text-sm text-gray-400 leading-relaxed">
-            Set the signer wallets of your Safe Account and how many need to
-            confirm to execute a valid transaction.
-          </p>
+          <div className="mb-8 max-w-xl">
+            <h1 className="text-xl font-semibold leading-relaxed">
+              This wallet runs on the Sepolia Testnet. To try this wallet, you
+              can grab free Sepolia ETH from{" "}
+              <a
+                href="https://cloud.google.com/application/web3/faucet"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-red-500 underline hover:text-red-400"
+              >
+                Google Cloud Faucet
+              </a>
+              .
+            </h1>
+          </div>
         </div>
 
         {/* CONNECT WALLET */}
