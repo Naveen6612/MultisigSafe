@@ -1,0 +1,133 @@
+"use client";
+
+import { X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { TransactionButton } from "thirdweb/react";
+import { keccak256, toHex } from "thirdweb/utils";
+import { ThirdwebContract, prepareContractCall } from "thirdweb";
+
+type ThresholdModalProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  ownersCount: number;
+  currentThreshold: number;
+  contract: ThirdwebContract;
+};
+
+export default function ThresholdModal({
+  isOpen,
+  onClose,
+  ownersCount,
+  currentThreshold,
+  contract,
+}: ThresholdModalProps) {
+  const [step, setStep] = useState<"edit" | "confirm">("edit");
+  const [newThreshold, setNewThreshold] = useState(currentThreshold);
+
+  useEffect(() => {
+    if (isOpen) {
+      setStep("edit");
+      setNewThreshold(currentThreshold);
+    }
+  }, [isOpen, currentThreshold]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xl bg-black/60">
+      <div className="w-full max-w-lg rounded-2xl bg-[#111] p-6 shadow-2xl">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold text-white">Update Threshold</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {step === "edit" && (
+          <>
+            <p className="text-gray-300 mb-4">
+              Set required number of signatures:
+            </p>
+
+            <div className="flex items-center gap-3 mb-6">
+              <select
+                value={newThreshold}
+                onChange={(e) => setNewThreshold(Number(e.target.value))}
+                className="bg-black text-white rounded-lg px-3 py-2"
+              >
+                {Array.from({ length: ownersCount }, (_, i) => i + 1).map(
+                  (v) => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ),
+                )}
+              </select>
+              <span className="text-gray-500">of {ownersCount}</span>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-800 transition"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={() => setStep("confirm")}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition"
+              >
+                Continue
+              </button>
+            </div>
+          </>
+        )}
+
+        {step === "confirm" && (
+          <>
+            <p className="text-gray-300 mb-6">
+              You are about to update threshold to{" "}
+              <span className="text-red-400 font-semibold">
+                {newThreshold} of {ownersCount}
+              </span>
+              .
+            </p>
+
+            <div className="flex justify-between items-center">
+              <button
+                onClick={() => setStep("edit")}
+                className="px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-800 transition"
+              >
+                Back
+              </button>
+
+              <TransactionButton
+                transaction={() => {
+                  const selector = keccak256(
+                    toHex("changeRequirement(uint256)"),
+                  ).slice(0, 10);
+                  const param = toHex(BigInt(newThreshold), { size: 32 }).slice(
+                    2,
+                  );
+                  const data = (selector + param) as `0x${string}`;
+
+                  return prepareContractCall({
+                    contract,
+                    method:
+                      "function submitTransaction(address _to, uint256 _value, bytes _data)",
+                    params: [contract.address, 0n, data],
+                  });
+                }}
+                onTransactionSent={onClose}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition shadow-lg"
+              >
+                Submit
+              </TransactionButton>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
