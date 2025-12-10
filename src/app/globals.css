@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ----------------------------------------------------------
+   GLOBAL ROOT STYLES
+---------------------------------------------------------- */
 :root {
   line-height: 1.5;
   font-weight: 400;
@@ -9,14 +12,63 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
   font-family: "Inter", sans-serif;
   font-optical-sizing: auto;
   font-style: normal;
   font-variation-settings: "slnt" 0;
 }
 
+/* ----------------------------------------------------------
+   BASE BODY STYLING
+---------------------------------------------------------- */
 @layer base {
   body {
     @apply bg-zinc-950 text-neutral-200;
   }
+}
+
+/* ----------------------------------------------------------
+   ANIMATIONS (used by sidebar, modals, dropdowns)
+---------------------------------------------------------- */
+
+/* Slide sidebar in from left */
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+.animate-slideIn {
+  animation: slideIn 0.25s ease-out;
+}
+
+/* Slide sidebar out to left (optional if you implement closing animation) */
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+.animate-slideOut {
+  animation: slideOut 0.25s ease-in forwards;
+}
+
+/* Smooth fade-in for vault dropdown or modals */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.25s ease-out;
 }

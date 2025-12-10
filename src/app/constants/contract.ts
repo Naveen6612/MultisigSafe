@@ -1,0 +1,1 @@
+export const MULTISIGWALLET = "0x52c52c7fa31b758a5d68f2fa13966cd63e8b8395";
