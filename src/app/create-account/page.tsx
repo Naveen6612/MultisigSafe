@@ -7,7 +7,9 @@ import {
   useActiveAccount,
   useActiveWallet,
   useDisconnect,
+  useReadContract,
 } from "thirdweb/react";
+
 import { client } from "../client";
 import { useRouter } from "next/navigation";
 import { MULTISIGWALLET } from "../constants/contract";
@@ -30,17 +32,32 @@ export default function CreateAccountPage() {
   const [signers, setSigners] = useState<string[]>([]);
   const [threshold, setThreshold] = useState<number>(1);
 
+  // FACTORY CONTRACT
   const contract = getContract({
     client,
     chain: sepolia,
     address: FACTORY_ADDRESS,
   });
 
+  // WALLET CREATED EVENT
   const WalletCreatedEvent = prepareEvent({
     signature:
       "event WalletCreated(address indexed wallet, address indexed creator, uint256 indexed index, address[] owners, uint256 numConfirmationsRequired)",
   });
 
+  // 1) READ EXISTING USER WALLETS
+  const { data: userWallets = [], isPending: walletsLoading } = useReadContract(
+    {
+      contract,
+      method:
+        "function getWalletsOf(address user) view returns ((address wallet, address creator, uint256 createdAt, bool deleted)[] result)",
+      params: [
+        account?.address || "0x0000000000000000000000000000000000000000",
+      ],
+    },
+  );
+
+  // SIGNER HANDLERS
   function onAddSigner() {
     setSigners([...signers, ""]);
   }
@@ -50,7 +67,6 @@ export default function CreateAccountPage() {
     updated.splice(index, 1);
     setSigners(updated);
 
-    // adjust threshold if needed
     const newCount = updated.length + 1;
     if (threshold > newCount) setThreshold(newCount);
   }
@@ -62,46 +78,40 @@ export default function CreateAccountPage() {
   }
 
   const ownersArray = [account?.address, ...signers].filter(
-    (addr): addr is string => typeof addr === "string" && addr.length > 0,
+    (addr): addr is string =>
+      typeof addr === "string" && addr.startsWith("0x") && addr.length === 42,
   );
+
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center px-4 py-10">
+    <div className="relative min-h-screen bg-black text-white flex items-center justify-center px-4 py-10">
+      {/* ----------------------------------------------
+          TOP-LEFT DASHBOARD BUTTON  (RED, SMALL)
+      ---------------------------------------------- */}
+      {!walletsLoading && userWallets.length > 0 && (
+        <button
+          onClick={() => router.push(`/dashboard/${userWallets[0].wallet}`)}
+          className="absolute top-6 left-6 bg-red-600 hover:bg-red-500 text-white text-sm font-semibold px-4 py-2 rounded-md transition"
+        >
+          Dashboard
+        </button>
+      )}
+
       <div className="w-full max-w-2xl">
         {/* HEADER */}
-        <div className="mb-12">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center">
-              <svg
-                className="w-5 h-5 text-white"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-            <h1 className="text-2xl font-bold text-white">
-              Signers and confirmations
-            </h1>
-          </div>
-          <div className="mb-8 max-w-xl">
-            <h1 className="text-xl font-semibold leading-relaxed">
-              This wallet runs on the Sepolia Testnet. To try this wallet, you
-              can grab free Sepolia ETH from{" "}
-              <a
-                href="https://cloud.google.com/application/web3/faucet"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-red-500 underline hover:text-red-400"
-              >
-                Google Cloud Faucet
-              </a>
-              .
-            </h1>
-          </div>
+        <div className="mb-8 max-w-xl">
+          <h1 className="text-xl font-semibold leading-relaxed">
+            This wallet runs on the Sepolia Testnet. To try this wallet, you can
+            grab free Sepolia ETH from{" "}
+            <a
+              href="https://cloud.google.com/application/web3/faucet"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-red-500 underline hover:text-red-400"
+            >
+              Google Cloud Faucet
+            </a>
+            .
+          </h1>
         </div>
 
         {/* CONNECT WALLET */}
@@ -113,162 +123,105 @@ export default function CreateAccountPage() {
               connectButton={{
                 label: "Connect Wallet",
                 style: {
-                  borderRadius: "0.5rem",
                   padding: "0.75rem 2rem",
-                  fontWeight: 600,
-                  fontSize: "0.875rem",
                   background: "#dc2626",
                   color: "white",
+                  borderRadius: "0.5rem",
                 },
               }}
             />
           </div>
         ) : (
           <>
-            {/* SIGNER LIST */}
+            {/* SIGNERS */}
             <div className="mb-8">
-              {/* Signer 1 (Connected Wallet) */}
-              <div className="mb-4">
-                <label className="text-xs text-gray-500 font-medium block mb-2">
-                  Signer name
-                </label>
-                <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-400">Signer 1</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-xs font-bold">
-                        S
-                      </div>
-                      <span className="text-sm text-white font-mono">
-                        sep: {account.address.slice(0, 10)}...
-                        {account.address.slice(-4)}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-600 mt-2">
-                    Your connected wallet
-                  </p>
-                </div>
+              {/* Connected Wallet */}
+              <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 mb-4">
+                <p className="text-gray-400 mb-2">Signer 1</p>
+                <p className="font-mono text-white">
+                  {account.address.slice(0, 10)}...{account.address.slice(-4)}
+                </p>
               </div>
 
               {/* Additional Signers */}
               {signers.map((signer, index) => (
-                <div key={index} className="mb-4">
-                  <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm text-gray-400">
-                        Signer {index + 2}
-                      </span>
-                      <button
-                        onClick={() => onRemoveSigner(index)}
-                        className="text-red-500 hover:text-red-400 text-xs font-medium"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    <input
-                      value={signer}
-                      placeholder="Enter signer address"
-                      onChange={(e) => onSignerChange(index, e.target.value)}
-                      className="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-sm text-white placeholder-gray-600 outline-none focus:border-red-600"
-                    />
+                <div
+                  key={index}
+                  className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 mb-4"
+                >
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-gray-400">Signer {index + 2}</p>
+                    <button
+                      onClick={() => onRemoveSigner(index)}
+                      className="text-red-500 text-xs hover:text-red-400"
+                    >
+                      Remove
+                    </button>
                   </div>
+
+                  <input
+                    value={signer}
+                    onChange={(e) => onSignerChange(index, e.target.value)}
+                    placeholder="Enter signer address"
+                    className="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-sm text-white"
+                  />
                 </div>
               ))}
 
-              <button
-                onClick={onAddSigner}
-                className="text-red-500 hover:text-red-400 text-sm font-medium flex items-center gap-1"
-              >
-                <span className="text-lg">+</span> Add new signer
+              <button onClick={onAddSigner} className="text-red-500 text-sm">
+                + Add new signer
               </button>
             </div>
 
-            {/* THRESHOLD SELECTION */}
+            {/* THRESHOLD */}
             <div className="mb-12">
-              <label className="text-sm text-white font-medium block mb-2">
-                Threshold
-              </label>
-              <p className="text-xs text-gray-500 mb-4">
-                Any transaction requires the confirmation of:
-              </p>
-
+              <label>Threshold</label>
               <select
                 value={threshold}
                 onChange={(e) => setThreshold(Number(e.target.value))}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-red-600 appearance-none cursor-pointer"
-                style={{
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23999' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`,
-                  backgroundPosition: "right 0.5rem center",
-                  backgroundRepeat: "no-repeat",
-                  backgroundSize: "1.5em 1.5em",
-                  paddingRight: "2.5rem",
-                }}
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 text-white mt-2"
               >
                 {Array.from({ length: signers.length + 1 }).map((_, i) => (
                   <option key={i} value={i + 1}>
-                    {i + 1} out of {signers.length + 1} signer
-                    {signers.length + 1 > 1 ? "s" : ""}
+                    {i + 1} out of {signers.length + 1} signers
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* NAVIGATION BUTTONS */}
-            <div className="flex items-center justify-between gap-4">
-              <button
-                onClick={() => {
-                  if (wallet) {
-                    disconnect(wallet);
-                  }
-                }}
-                className="px-6 py-3 bg-zinc-900 border border-zinc-800 rounded-lg text-sm font-medium text-white hover:bg-zinc-800 transition flex items-center gap-2"
-              >
-                <span>←</span> Back
-              </button>
+            {/* CREATE WALLET */}
+            <TransactionButton
+              transaction={() =>
+                prepareContractCall({
+                  contract,
+                  method:
+                    "function createWallet(address[] _owners, uint256 _numConfirmationsRequired) returns (address)",
+                  params: [ownersArray, BigInt(threshold)],
+                })
+              }
+              onTransactionConfirmed={(receipt) => {
+                const decoded = parseEventLogs({
+                  events: [WalletCreatedEvent],
+                  logs: receipt.logs,
+                });
 
-              <TransactionButton
-                transaction={() =>
-                  prepareContractCall({
-                    contract,
-                    method:
-                      "function createWallet(address[] _owners, uint256 _numConfirmationsRequired) returns (address)",
-                    params: [ownersArray, BigInt(threshold)],
-                  })
-                }
-                onTransactionConfirmed={(receipt) => {
-                  const decoded = parseEventLogs({
-                    events: [WalletCreatedEvent],
-                    logs: receipt.logs,
-                  });
+                const evt = decoded.find(
+                  (e) => e.eventName === "WalletCreated",
+                );
 
-                  const evt = decoded.find(
-                    (e) => e.eventName === "WalletCreated",
-                  );
+                if (!evt) return console.error("Event not found");
 
-                  if (!evt) {
-                    console.error("WalletCreated event not found");
-                    return;
-                  }
-
-                  const newWalletAddress = evt.args.wallet;
-                  console.log("New Wallet:", newWalletAddress);
-
-                  router.push(`/dashboard/${newWalletAddress}`);
-                }}
-                style={{
-                  borderRadius: "0.5rem",
-                  padding: "0.75rem 2rem",
-                  fontWeight: 600,
-                  fontSize: "0.875rem",
-                  background: "#dc2626",
-                  color: "white",
-                  border: "none",
-                }}
-              >
-                Next
-              </TransactionButton>
-            </div>
+                router.push(`/dashboard/${evt.args.wallet}`);
+              }}
+              style={{
+                padding: "0.75rem 2rem",
+                background: "#dc2626",
+                color: "white",
+                borderRadius: "0.5rem",
+              }}
+            >
+              Create Wallet
+            </TransactionButton>
           </>
         )}
       </div>
