@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThirdwebProvider } from "thirdweb/react";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
+import { Analytics } from "@vercel/analytics/next";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -20,7 +21,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className=" bg-[#0b0b0b] text-white">
-        <ThirdwebProvider>{children}</ThirdwebProvider>
+        <ThirdwebProvider>
+          {children}
+          <Analytics />
+        </ThirdwebProvider>
       </body>
     </html>
   );
